@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+
+    <template id="portal_pricelist_verification" name="Pricelist Verification" inherit_id="portal.portal_sidebar" primary="True">
+        <xpath expr="//div[hasclass('o_portal_sidebar')]" position="inside">
+            <t t-set="o_portal_fullwidth_alert">
+                <!-- Uses backend_url provided in rendering values -->
+                <t t-call="portal.portal_back_in_edit_mode"/>
+            </t>
+            <div class="row o_portal_pricelist_sidebar">
+                <!-- Sidebar -->
+                <t t-call="portal.portal_record_sidebar" id="product_pricelist_portal_sidebar">
+                    <t t-set="classes" t-value="'d-print-none col-lg-3 col-xl-4'"/>
+
+                    <t t-set="title">
+                        <h2 t-field="currency_id.name"/>
+                        <h2 t-esc="total_price" data-id="total_price"/>
+                    </t>
+
+                    <i t-set="entries">
+                        <div class="d-flex flex-column gap-4">
+                            <t t-if="not partner_id.has_signature and partner_id.has_rejected == False">
+                                <div class="d-flex flex-column gap-2" id="product_pricelist_sidebar_button">
+                                    <a role="button" class="btn btn-primary d-block accept_sign_button" data-bs-toggle="modal" data-bs-target="#modalaccept" href="#">
+                                        <i class="fa fa-check">Accept &amp; Sign</i>
+                                    </a>
+                                </div>
+                            </t>
+
+                            <div class="navspy flex-grow-1 ps-0" t-ignore="true" role="complementary">
+                                <ul class="nav flex-column bs-sidenav"></ul>
+                            </div>
+
+                            <div t-if="partner_id">
+                                <h6><small class="text-muted">Your contact</small></h6>
+                                <div class="o_portal_contact_details d-flex flex-column gap-2">
+                                    <div class="d-flex justify-content-start align-items-center gap-2">
+                                        <img class="o_avatar o_portal_contact_img rounded" t-att-src="image_data_uri(partner_id.avatar_1024)" alt="Contact"/>
+                                        <div>
+                                            <h6 class="mb-0" t-out="partner_id.name"/>
+                                            <a href="#discussion" class="d-flex align-items-center gap-2 small fw-bold">
+                                            Send message
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </i>
+                </t>
+
+
+                <!-- Page content -->
+                <div id="pricelist_content" class="col-12 col-lg-9 col-xl-8 mt-5 mt-lg-0">
+
+                    <!-- modal relative to the actions sign and pay -->
+                    <div role="dialog" class="modal fade modal_accept_dialog" id="modalaccept">
+                        <div class="modal-dialog">
+                            <form id="accept" method="POST" t-att-data-order-id="partner_id.id"
+                                  class="js_accept_json modal-content js_website_submit_form">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <header class="modal-header">
+                                    <h4 class="modal-title">Sign Pricelist</h4>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </header>
+                                <main class="modal-body" id="sign-dialog">
+                                    <t t-call="portal.signature_form">
+                                        <t t-set="call_url" t-value="'/my/pricelists/%d/%d/accept' % (partner_id.id,pricelist_id.id)"/>
+                                        <t t-set="default_name" t-value="partner_id.name"/>
+                                    </t>
+                                </main>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- modal relative to the action reject -->
+                    <div role="dialog" class="modal fade" id="modaldecline">
+                        <div class="modal-dialog">
+                            <form id="decline" method="POST" t-attf-action="/my/pricelists/#{partner_id.id}/#{pricelist_id.id}/decline" class="modal-content">
+                                <input type="hidden" name="csrf_token" t-att-value="request.csrf_token()"/>
+                                <header class="modal-header">
+                                    <h4 class="modal-title">Reject This Pricelist</h4>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </header>
+                                <main class="modal-body">
+                                    <p>
+                                        Tell us why you are refusing this pricelist, this will help us improve our services.
+                                    </p>
+                                    <textarea rows="4" name="decline_message" required="" placeholder="Your feedback..." class="form-control" />
+                                </main>
+                                <footer class="modal-footer">
+                                    <button type="submit" t-att-id="partner_id.id" class="btn btn-danger">
+                                        <i class="fa fa-times"></i> Reject
+                                    </button>
+                                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+                                        Cancel
+                                    </button>
+                                </footer>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- modal for terms and conditions alert -->
+                    <div role="dialog" class="modal fade" id="modalalert">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h4 class="modal-title">Alert</h4>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>In order to proceed, you must agree with the terms and conditions.</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- status messages -->
+                    <div t-if="message == 'sign_ok'" class="alert alert-success alert-dismissible d-print-none" role="status">
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <strong>Thank You!</strong><br/>
+                        Your pricelist has been signed
+                    </div>
+
+                    <div t-if="message == 'rejected'" class="alert alert-danger alert-dismissible d-print-none" role="alert">
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        Your pricelist has been rejected.
+                    </div>
+
+                    <!-- main content -->
+                    <div t-attf-class="#{'pb-5' if report_type == 'html' else ''}" id="portal_pricelist_content">
+                        <div t-call="#{pricelist_id._get_pricelist_portal_content_view()}"/>
+                    </div>
+
+                     <!-- bottom actions -->
+                    <t t-if="not partner_id.has_signature and partner_id.has_rejected == False">
+                        <div class="d-flex justify-content-center gap-1 d-print-none">
+                            <div class="col-sm-auto mt8">
+                                <a role="button" class="btn btn-primary d-block accept_sign_button" data-bs-toggle="modal" data-bs-target="#modalaccept" href="#">
+                                    <i class="fa fa-check">Accept &amp; Sign</i>
+                                </a>
+                            </div>
+                            <div class="col-sm-auto mt8">
+                                <a role="button" class="btn btn-secondary" href="#discussion"><i class="fa fa-comment"/> Feedback</a>
+                            </div>
+                            <div class="col-sm-auto mt8">
+                                <a role="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#modaldecline" href="#"> <i class="fa fa-times"/> Reject</a>
+                            </div>
+                        </div>
+                    </t>
+
+                    <!-- chatter -->
+                    <hr/>
+<!--                    <div id="product_pricelist_communication">-->
+<!--                        <h3>Communication history</h3>-->
+<!--                        <t t-call="portal.message_thread"/>-->
+<!--                    </div>-->
+
+                </div>
+            </div>
+        </xpath>
+    </template>
+
+</odoo>
